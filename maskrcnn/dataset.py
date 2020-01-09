@@ -60,15 +60,16 @@ class MaskrcnnDataset(Dataset):
         # reference of images/masks
         self.reference = reference
 
-    def load_images(
+    def add_images(
             self,
             data_source: str,
             idxs: List[int],
     ):
         """
+        Add images into the dataset based on indices of the image file paths list.
 
         :param data_source:
-        :param idxs:
+        :param idxs: indices of the file paths list for the images be added
         :return:
         """
 
@@ -88,15 +89,17 @@ class MaskrcnnDataset(Dataset):
     def load_image(
             self,
             image_id: str,
-    ):
+    ) -> np.ndarray:
         """
+        Gets an array of RGB pixel values, resized to the dataset's specified
+        width (with aspect ratio preserved), and with shape (height, width, 3).
 
         :param image_id:
-        :return:
+        :return: 3-D numpy array, with shape (height, width, 3)
         """
 
-        # grab the image path, load it, and convert it
-        #  from BGR to RGB color channel ordering
+        # grab the image path, load it, and convert
+        # it from BGR to RGB color channel ordering
         image_path = self.image_info[image_id]["path"]
         image = cv2.imread(image_path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -159,7 +162,10 @@ class MaskrcnnDataset(Dataset):
         # return the mask array and class IDs
         return masks.astype("bool"), class_ids.astype("int32")
 
-    def image_reference(self, image_id):
+    def image_reference(
+            self,
+            image_id: str,
+    ) -> str:
         """
         Return a link to the image in its source website or details about
         the image that help looking it up or debugging it.
