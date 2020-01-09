@@ -157,4 +157,15 @@ class MaskrcnnDataset(Dataset):
             masks[:, :, i] = class_mask
 
         # return the mask array and class IDs
-        return (masks.astype("bool"), class_ids.astype("int32"))
+        return masks.astype("bool"), class_ids.astype("int32")
+
+    def image_reference(self, image_id):
+        """
+        Return a link to the image in its source website or details about
+        the image that help looking it up or debugging it.
+
+        :param image_id: file ID for the image
+        :return: string with reference information about the source or other details
+        """
+
+        return self.reference
