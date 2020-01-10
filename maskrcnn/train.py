@@ -11,43 +11,63 @@ from maskrcnn.dataset import MaskrcnnDataset
 
 
 # ------------------------------------------------------------------------------
+# class MaskrcnnConfig(Config):
+#
+#     def __init__(
+#             self,
+#             config_name: str,
+#             class_names: Dict,
+#             train_indices: List[int],
+#             valid_indices: List[int],
+#     ):
+#         """
+#         Constructor function used to initialize objects of this class.
+#
+#         :param config_name:
+#         :param class_names:
+#         :param train_indices:
+#         :param valid_indices:
+#         """
+#
+#         # call the parent constructor
+#         super().__init__()
+#
+#         # # number of classes (+1 for the background)
+#         # NUM_CLASSES = len(class_names)  # + 1
+#
+#         # give the configuration a recognizable name
+#         self.NAME = config_name
+#
+#         # set the number of GPUs to use training along with the number of
+#         # images per GPU (which may have to be tuned depending on how
+#         # much memory your GPU has)
+#         GPU_COUNT = 4
+#         IMAGES_PER_GPU = 1
+#
+#         # set the number of steps per training epoch and validation cycle
+#         images_count = IMAGES_PER_GPU * GPU_COUNT
+#         STEPS_PER_EPOCH = 518  # len(train_indices) // images_count
+#         VALIDATION_STEPS = 129  # len(valid_indices) // images_count
+#
+#
+# ------------------------------------------------------------------------------
 class MaskrcnnConfig(Config):
 
-    def __init__(
-            self,
-            config_name: str,
-            class_names: Dict,
-            train_indices: List[int],
-            valid_indices: List[int],
-    ):
-        """
-        Constructor function used to initialize objects of this class.
+    # number of classes (+1 for the background)
+    NUM_CLASSES = 2
 
-        :param config_name:
-        :param class_names:
-        :param train_indices:
-        :param valid_indices:
-        """
+    # give the configuration a recognizable name
+    NAME = "maskrcnn"
 
-        # call the parent constructor
-        super().__init__()
+    # set the number of GPUs to use training along with the number of
+    # images per GPU (which may have to be tuned depending on how
+    # much memory your GPU has)
+    GPU_COUNT = 1
+    IMAGES_PER_GPU = 4
 
-        # number of classes
-        NUM_CLASSES = len(class_names) + 1
-
-        # give the configuration a recognizable name
-        self.NAME = config_name
-
-        # set the number of GPUs to use training along with the number of
-        # images per GPU (which may have to be tuned depending on how
-        # much memory your GPU has)
-        GPU_COUNT = 1
-        IMAGES_PER_GPU = 1
-
-        # set the number of steps per training epoch and validation cycle
-        images_count = IMAGES_PER_GPU * GPU_COUNT
-        STEPS_PER_EPOCH = len(train_indices) // images_count
-        VALIDATION_STEPS = len(valid_indices) // images_count
+    # set the number of steps per training epoch and validation cycle
+    STEPS_PER_EPOCH = 518
+    VALIDATION_STEPS = 129
 
 
 # ------------------------------------------------------------------------------
@@ -89,7 +109,7 @@ def _class_ids_to_labels(
 
 
 # ------------------------------------------------------------------------------
-def train(
+def train_model(
         images_dir: str,
         masks_dir: str,
         masks_suffix: str,
@@ -100,18 +120,21 @@ def train(
         train_split: float = 0.8,
 ):
     """
-    TODO
+    Trains (fine tuning) the Mask R-CNN model using a training dataset and
+    pre-trained model weights.
 
-    :param images_dir:
-    :param masks_dir:
-    :param masks_suffix:
-    :param pretrained_model:
-    :param output_dir:
+    :param images_dir: directory containing image files
+    :param masks_dir: directory containing mask files
+    :param masks_suffix: mask file suffix, assumes mask file names equal the file
+        ID the corresponding image file (file name minus .jpg extension) plus
+        this suffix
+    :param pretrained_model: model weights for pre-trained model
+    :param output_dir: directory where log files and model weights will be written
     :param classes: path to text file containing the class labels used in the
-        dataset, one per line
-    :param epochs:
-    :param train_split:
-    :return:
+        dataset, with one class label per line
+    :param epochs: number of training iterations
+    :param train_split: percentage of images to use for training (remainder
+        for validation)
     """
 
     # get list of image paths (all JPG images in the images directory)
@@ -158,7 +181,8 @@ def train(
     )
 
     # initialize the training configuration
-    config = MaskrcnnConfig("maskrcnn", class_names, train_indices, valid_indices)
+    config = MaskrcnnConfig()
+    # config = MaskrcnnConfig("maskrcnn", class_names, train_indices, valid_indices)
 
     # initialize the model and load the pre-trained
     # weights we'll use to perform fine-tuning
@@ -257,7 +281,7 @@ def main():
     args = vars(args_parser.parse_args())
 
     # train the model
-    train(
+    train_model(
         args["images"],
         args["masks"],
         args["masks_suffix"],
