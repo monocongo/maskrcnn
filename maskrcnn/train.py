@@ -32,21 +32,22 @@ class MaskrcnnConfig(Config):
         # call the parent constructor
         super().__init__()
 
+        # number of classes
+        NUM_CLASSES = len(class_names) + 1
+
         # give the configuration a recognizable name
         self.NAME = config_name
 
         # set the number of GPUs to use training along with the number of
         # images per GPU (which may have to be tuned depending on how
         # much memory your GPU has)
-        gpu_count = 1
-        images_per_gpu = 1
+        GPU_COUNT = 1
+        IMAGES_PER_GPU = 1
 
         # set the number of steps per training epoch and validation cycle
-        self.STEPS_PER_EPOCH = len(train_indices) // (images_per_gpu * gpu_count)
-        self.VALIDATION_STEPS = len(valid_indices) // (images_per_gpu * gpu_count)
-
-        # number of classes (+1 for the background)
-        self.NUM_CLASSES = len(class_names) + 1
+        images_count = IMAGES_PER_GPU * GPU_COUNT
+        STEPS_PER_EPOCH = len(train_indices) // images_count
+        VALIDATION_STEPS = len(valid_indices) // images_count
 
 
 # ------------------------------------------------------------------------------
