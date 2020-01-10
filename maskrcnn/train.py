@@ -50,6 +50,44 @@ class MaskrcnnConfig(Config):
 
 
 # ------------------------------------------------------------------------------
+def _class_ids_to_labels(
+        labels_path: str,
+) -> Dict:
+    """
+    Reads a text file, which is assumed to contain one class label per line, and
+    returns a dictionary with integer keys (starting with 1) mapped to the class
+    label that was found at the key's line number.
+
+    So a labels file like so:
+
+    cat
+    dog
+    panda
+
+    will result in a dictionary like so:
+
+    {
+      1: "cat,
+      2: "dog",
+      3: "panda",
+    }
+
+    :param labels_path: path to a file containing class labels used in
+        a segmentation dataset, with one class label per line
+    :return: dictionary mapping ID values to corresponding labels
+    """
+
+    class_labels = {}
+    with open(labels_path, "r") as class_labels_file:
+        class_id = 1
+        for class_label in class_labels_file:
+            class_labels[class_id] = class_label.strip()
+            class_id += 1
+
+    return class_labels
+
+
+# ------------------------------------------------------------------------------
 def train(
         images_dir: str,
         masks_dir: str,
@@ -92,12 +130,7 @@ def train(
     valid_indices = idxs[i:]
 
     # read the classes file to get the class IDs mapped to class labels/names
-    class_names = {}
-    class_id = 1
-    with open(classes, "r") as class_labels_file:
-        for class_label in class_labels_file:
-            class_names[class_id] = class_label
-            class_id += 1
+    class_names = _class_ids_to_labels(classes)
 
     # for each class ID add the mask value used in the mask image
     # TODO the values below are specific to mask files where there
@@ -150,7 +183,7 @@ def train(
     model.train(
         train_dataset,
         valid_dataset,
-        epochs=epochs,
+        epochs=(epochs - layer_heads_training_epochs),
         layers="all",
         learning_rate=config.LEARNING_RATE / 10,
         augmentation=augmentation,
@@ -229,8 +262,8 @@ def main():
         args["masks_suffix"],
         args["pretrained"],
         args["output"],
-        args["epochs"],
         args["classes"],
+        args["epochs"],
         args["train_split"],
     )
 
@@ -241,8 +274,10 @@ if __name__ == "__main__":
     Usage: 
     $ python train.py --images ~/datasets/handgun/images \
         --masks ~/datasets/handgun/masks \
+        --masks_suffix _segmentation.jpg
         --pretrained ~/maskrcnn/weights/mask_rcnn_coco.h5 \
         --output ~/maskrcnn/weights/mask_rcnn_handgun.h5 \
+        --classes ~/datasets/handgun/class_labels.txt \
         --epochs 50 --train_split 0.8 
     """
 
