@@ -9,9 +9,23 @@ def train(
         masks_dir: str,
         pretrained_model: str,
         output_model: str,
+        classes: str,
         epochs: int = 40,
         train_split: float = 0.8,
 ):
+    """
+    TODO
+
+    :param images_dir:
+    :param masks_dir:
+    :param pretrained_model:
+    :param output_model:
+    :param classes:
+    :param epochs:
+    :param train_split:
+    :return:
+    """
+
     # get list of image paths (all JPG images in the images directory)
     image_paths = []
     for file_name in os.listdir(images_dir):
@@ -28,8 +42,8 @@ def train(
     train_indices = idxs[:i]
     valid_indices = idxs[i:]
 
+    # read the class labels file to get the class IDs to class labels dictionary
     # TODO
-    pass
 
 
 # ------------------------------------------------------------------------------
@@ -78,6 +92,13 @@ def main():
         help="percentage of the training data to use for training "
              "((1.0 - this value) will be used for validation)",
     )
+    args_parser.add_argument(
+        "--classes",
+        required=True,
+        type=str,
+        help="path of the class labels file listing one class per line",
+    )
+
     args = vars(args_parser.parse_args())
 
     train(
@@ -86,6 +107,7 @@ def main():
         args["pretrained"],
         args["output"],
         args["epochs"],
+        args["classes"],
         args["train_split"],
     )
 
