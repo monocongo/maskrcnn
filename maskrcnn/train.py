@@ -1,4 +1,6 @@
 import argparse
+import os
+import random
 
 
 # ------------------------------------------------------------------------------
@@ -10,6 +12,22 @@ def train(
         epochs: int = 40,
         train_split: float = 0.8,
 ):
+    # get list of image paths (all JPG images in the images directory)
+    image_paths = []
+    for file_name in os.listdir(images_dir):
+        if file_name.endswith('.jpg'):
+            image_paths.append(os.path.join(images_dir, file_name))
+
+    # get a list of indices for training and validation
+    # images by randomizing the image paths list indices
+    # and slicing according to the training split percentage
+    idxs = list(range(0, len(image_paths)))
+    random.seed(42)
+    random.shuffle(idxs)
+    i = int(len(idxs) * train_split)
+    train_indices = idxs[:i]
+    valid_indices = idxs[i:]
+
     # TODO
     pass
 
