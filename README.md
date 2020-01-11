@@ -4,8 +4,9 @@ Instance segmentation using Mask R-CNN
 ### Python Environment
 1. Create a new Python virtual environment:
     ```bash
-    $ conda create -n maskrcnn python=3 --yes
-    $ conda activate maskrcnn
+    $ conda config --add channels conda-forge
+    $ conda create -n mrcnn python=3 --yes
+    $ conda activate mrcnn
     ```
 2. Get the Mask R-CNN implementation and install the dependencies:
     ```bash
