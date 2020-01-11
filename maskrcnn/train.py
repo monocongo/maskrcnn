@@ -10,7 +10,7 @@ from mrcnn.config import Config
 from maskrcnn.dataset import MaskrcnnDataset
 
 
-# ------------------------------------------------------------------------------
+# # ------------------------------------------------------------------------------
 # class MaskrcnnConfig(Config):
 #
 #     def __init__(
@@ -32,8 +32,8 @@ from maskrcnn.dataset import MaskrcnnDataset
 #         # call the parent constructor
 #         super().__init__()
 #
-#         # # number of classes (+1 for the background)
-#         # NUM_CLASSES = len(class_names)  # + 1
+#         # number of classes (+1 for the background)
+#         self.NUM_CLASSES = len(class_names) + 1
 #
 #         # give the configuration a recognizable name
 #         self.NAME = config_name
@@ -41,13 +41,13 @@ from maskrcnn.dataset import MaskrcnnDataset
 #         # set the number of GPUs to use training along with the number of
 #         # images per GPU (which may have to be tuned depending on how
 #         # much memory your GPU has)
-#         GPU_COUNT = 4
-#         IMAGES_PER_GPU = 1
+#         GPU_COUNT = 1
+#         IMAGES_PER_GPU = 2
 #
 #         # set the number of steps per training epoch and validation cycle
 #         images_count = IMAGES_PER_GPU * GPU_COUNT
-#         STEPS_PER_EPOCH = 518  # len(train_indices) // images_count
-#         VALIDATION_STEPS = 129  # len(valid_indices) // images_count
+#         STEPS_PER_EPOCH = len(train_indices) // images_count
+#         VALIDATION_STEPS = len(valid_indices) // images_count
 #
 #
 # ------------------------------------------------------------------------------
@@ -63,11 +63,11 @@ class MaskrcnnConfig(Config):
     # images per GPU (which may have to be tuned depending on how
     # much memory your GPU has)
     GPU_COUNT = 1
-    IMAGES_PER_GPU = 4
+    IMAGES_PER_GPU = 2
 
     # set the number of steps per training epoch and validation cycle
-    STEPS_PER_EPOCH = 518
-    VALIDATION_STEPS = 129
+    STEPS_PER_EPOCH = 1036
+    VALIDATION_STEPS = 258
 
 
 # ------------------------------------------------------------------------------
@@ -146,12 +146,12 @@ def train_model(
     # get a list of indices for training and validation
     # images by randomizing the image paths list indices
     # and slicing according to the training split percentage
-    idxs = list(range(0, len(image_paths)))
+    path_indices = list(range(0, len(image_paths)))
     random.seed(42)
-    random.shuffle(idxs)
-    i = int(len(idxs) * train_split)
-    train_indices = idxs[:i]
-    valid_indices = idxs[i:]
+    random.shuffle(path_indices)
+    i = int(len(path_indices) * train_split)
+    train_indices = path_indices[:i]
+    valid_indices = path_indices[i:]
 
     # read the classes file to get the class IDs mapped to class labels/names
     class_names = _class_ids_to_labels(classes)
