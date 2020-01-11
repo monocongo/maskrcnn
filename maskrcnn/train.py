@@ -66,8 +66,8 @@ class MaskrcnnConfig(Config):
     IMAGES_PER_GPU = 2
 
     # set the number of steps per training epoch and validation cycle
-    STEPS_PER_EPOCH = 1036
-    VALIDATION_STEPS = 258
+    STEPS_PER_EPOCH = 1037
+    VALIDATION_STEPS = 259
 
 
 # ------------------------------------------------------------------------------
