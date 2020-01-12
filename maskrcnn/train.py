@@ -1,7 +1,7 @@
 import argparse
 import os
 import random
-from typing import Dict
+from typing import Dict, List
 
 from imgaug import augmenters as iaa
 from mrcnn import model as modellib
@@ -10,48 +10,50 @@ from mrcnn.config import Config
 from maskrcnn.dataset import MaskrcnnMasksDataset, MaskrcnnViajsonDataset
 
 
-# # ------------------------------------------------------------------------------
-# class MaskrcnnConfig(Config):
-#
-#     def __init__(
-#             self,
-#             config_name: str,
-#             class_names: Dict,
-#             train_indices: List[int],
-#             valid_indices: List[int],
-#     ):
-#         """
-#         Constructor function used to initialize objects of this class.
-#
-#         :param config_name:
-#         :param class_names:
-#         :param train_indices:
-#         :param valid_indices:
-#         """
-#
-#         # call the parent constructor
-#         super().__init__()
-#
-#         # number of classes (+1 for the background)
-#         self.NUM_CLASSES = len(class_names) + 1
-#
-#         # give the configuration a recognizable name
-#         self.NAME = config_name
-#
-#         # set the number of GPUs to use training along with the number of
-#         # images per GPU (which may have to be tuned depending on how
-#         # much memory your GPU has)
-#         GPU_COUNT = 1
-#         IMAGES_PER_GPU = 2
-#
-#         # set the number of steps per training epoch and validation cycle
-#         images_count = IMAGES_PER_GPU * GPU_COUNT
-#         STEPS_PER_EPOCH = len(train_indices) // images_count
-#         VALIDATION_STEPS = len(valid_indices) // images_count
-#
-#
 # ------------------------------------------------------------------------------
 class MaskrcnnConfig(Config):
+
+    def __init__(
+            self,
+            config_name: str,
+            class_names: Dict,
+            train_indices: List[int],
+            valid_indices: List[int],
+            gpu_count: int = 1,
+            images_per_gpu: int = 1,
+    ):
+        """
+        Constructor function used to initialize objects of this class.
+
+        :param config_name:
+        :param class_names:
+        :param train_indices:
+        :param valid_indices:
+        """
+
+        # call the parent constructor
+        super().__init__()
+
+        # number of classes (+1 for the background)
+        self.NUM_CLASSES = len(class_names) + 1
+
+        # give the configuration a recognizable name
+        self.NAME = config_name
+
+        # set the number of GPUs to use training along with the number of
+        # images per GPU (which may have to be tuned depending on how
+        # much memory your GPU has)
+        self.GPU_COUNT = gpu_count
+        self.IMAGES_PER_GPU = images_per_gpu
+
+        # set the number of steps per training epoch and validation cycle
+        images_count = gpu_count * images_per_gpu
+        self.STEPS_PER_EPOCH = len(train_indices) // images_count
+        self.VALIDATION_STEPS = len(valid_indices) // images_count
+
+
+# ------------------------------------------------------------------------------
+class MaskrcnnConfigHardcoded(Config):
 
     # number of classes (+1 for the background)
     NUM_CLASSES = 2
@@ -189,7 +191,7 @@ def train_model(
     )
 
     # initialize the training configuration
-    config = MaskrcnnConfig()
+    config = MaskrcnnConfigHardcoded()
     # config = MaskrcnnConfig("maskrcnn", class_names, train_indices, valid_indices)
 
     # initialize the model and load the pre-trained
