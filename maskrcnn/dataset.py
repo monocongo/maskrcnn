@@ -1,3 +1,4 @@
+import json
 import os
 from typing import Dict, List
 
@@ -13,22 +14,17 @@ class MaskrcnnDataset(Dataset):
             self,
             image_paths: List[str],
             class_names: Dict,
-            class_masks: Dict,
-            masks_dir: str,
-            masks_suffix: str,
             width: int = 1024,
             reference: str = None,
     ):
         """
         Constructor function used to initialize objects of this class.
 
-        :param image_paths:
+        :param image_paths: list of image paths
         :param class_names: dictionary of class IDs to labels
-        :param class_masks: dictionary of class IDs to mask pixel values
-        :param masks_dir:
-        :param masks_suffix:
-        :param width:
-        :param reference:
+        :param width: width to which images and masks will eventually be resized
+        :param reference: description, URL, etc. providing some reference for
+            the source or other details of the image
         """
 
         # validate arguments
@@ -46,16 +42,6 @@ class MaskrcnnDataset(Dataset):
 
         # the width dimension to which all images will be resized
         self.width = width
-
-        # directory and suffix of mask file paths
-        # mask files should share the ID of their corresponding image,
-        # and will have a path == masks_dir + os.sep + image_id + masks_suffix
-        self.masks_dir = masks_dir
-        self.masks_suffix = masks_suffix
-
-        # dictionary mapping class IDs to the grayscale pixel
-        # value used for masks of objects of the class
-        self.class_masks = class_masks
 
         # reference of images/masks
         self.reference = reference
@@ -110,6 +96,187 @@ class MaskrcnnDataset(Dataset):
         # return the image
         return image
 
+    def image_reference(
+            self,
+            image_id: str,
+    ) -> str:
+        """
+        Return a link to the image in its source website or details about
+        the image that help looking it up or debugging it.
+
+        :param image_id: file ID for the image
+        :return: string with reference information about the source or other details
+        """
+
+        return self.reference
+
+
+class MaskrcnnViajsonDataset(MaskrcnnDataset):
+
+    def __init__(
+            self,
+            image_paths: List[str],
+            class_names: Dict,
+            viajson: str,
+            width: int = 1024,
+            reference: str = None,
+    ):
+        """
+        Constructor function used to initialize objects of this class.
+
+        :param image_paths:
+        :param class_names: dictionary of class IDs to labels
+        :param viajson: path to VIA annotations JSON file containing segmentation
+            regions defining the masks
+        :param width:
+        :param reference:
+        """
+
+        # call the parent constructor
+        super().__init__(self, image_paths, class_names, width, reference)
+
+        self.via_annotations = self.load_annotation_data(viajson)
+
+    @staticmethod
+    def load_annotation_data(
+            viajson_file_path: str,
+    ) -> Dict:
+        """
+        Gets the annotations data for the images in the dataset from an
+        annotation JSON file created by the VGG Image Annotator (VIA) tool.
+
+        :param viajson_file_path: annotation JSON file created using the VIA tool
+        :return: a dictionary with the image file names as keys and annotation
+            data as values
+        """
+
+        # load the contents of the annotation JSON file (created
+        # using the VIA tool) and initialize the annotations
+        # dictionary
+        annotations = json.loads(open(viajson_file_path).read())
+        image_annotations = {}
+
+        # loop over the file ID and annotations themselves (values)
+        for (fileID, data) in sorted(annotations.items()):
+            # store the data in the dictionary using the filename as the key
+            image_annotations[data["filename"]] = data
+
+        # return the annotations dictionary
+        return image_annotations
+
+    def load_mask(
+            self,
+            image_id: str,
+    ) -> (np.ndarray, List):
+
+        # grab the image info and then grab the annotation data for
+        # the current image based on the unique image ID
+        info = self.image_info[image_id]
+        annotation = self.via_annotations[info["id"]]
+
+        # allocate memory for our [height, width, num_instances] array
+        # where each "instance" (region) effectively has its own "channel"
+        num_instances = len(annotation["regions"])
+        masks = np.zeros(
+            shape=(info["height"], info["width"], num_instances),
+            dtype="uint8",
+        )
+
+        # allocate memory for our [num_instances] array to contain
+        # the class IDs corresponding to each mask instance
+        mask_class_ids = np.full(
+            shape=(num_instances,),
+            dtype="int32",
+            fill_value=-1,
+        )
+
+        # loop over each of the annotated regions
+        for (i, region) in enumerate(annotation["regions"]):
+
+            # allocate memory for the region mask
+            region_mask = np.zeros(masks.shape[:2], dtype="uint8")
+
+            # grab the shape and region attributes
+            shape_attributes = region["shape_attributes"]
+            region_attributes = region["region_attributes"]
+
+            # find the class ID corresponding to the region's class attribute
+            class_label = region_attributes["class"]
+            class_id = -1
+            for key, label in self.class_names.items():
+                if label == class_label:
+                    class_id = key
+                    break
+            if class_id == -1:
+                raise ValueError(
+                    "No corresponding class ID found for the class label "
+                    f"found in the region attributes -- label: {class_label}",
+                )
+
+            # get the array of (x, y)-coordinates for the region's mask polygon
+            x_coords = shape_attributes["all_points_x"]
+            y_coords = shape_attributes["all_points_y"]
+            coords = zip(x_coords, y_coords)
+            poly_coords = [[x, y] for x, y in coords]
+            pts = np.array(poly_coords, np.int32)
+
+            # reshape the points to (<# of coordinates>, 1, 2)
+            pts = pts.reshape((-1, 1, 2))
+
+            # draw the polygon mask, using the class ID as the mask value
+            grayscale_rgb = [class_id]*3
+            cv2.polylines(region_mask, [pts], True, grayscale_rgb)
+
+            # fill the polygon (don't just have a border)
+            # TODO
+
+            # store the mask in the masks array
+            masks[:, :, i] = region_mask
+
+            # store the class ID for this channel (mask region)
+            mask_class_ids[i] = class_id
+
+        # return the mask array and array of mask class IDs
+        return masks.astype("bool"), mask_class_ids
+
+
+class MaskrcnnMasksDataset(MaskrcnnDataset):
+
+    def __init__(
+            self,
+            image_paths: List[str],
+            class_names: Dict,
+            class_masks: Dict,
+            masks_dir: str,
+            masks_suffix: str,
+            width: int = 1024,
+            reference: str = None,
+    ):
+        """
+        Constructor function used to initialize objects of this class.
+
+        :param image_paths:
+        :param class_names: dictionary of class IDs to labels
+        :param class_masks: dictionary of class IDs to mask pixel values
+        :param masks_dir:
+        :param masks_suffix:
+        :param width:
+        :param reference:
+        """
+
+        # call the parent constructor
+        super().__init__(self, image_paths, class_names, width, reference)
+
+        # directory and suffix of mask file paths
+        # mask files should share the ID of their corresponding image,
+        # and will have a path == masks_dir + os.sep + image_id + masks_suffix
+        self.masks_dir = masks_dir
+        self.masks_suffix = masks_suffix
+
+        # dictionary mapping class IDs to the grayscale pixel
+        # value used for masks of objects of the class
+        self.class_masks = class_masks
+
     def load_mask(
             self,
             image_id: str,
@@ -161,17 +328,3 @@ class MaskrcnnDataset(Dataset):
 
         # return the mask array and class IDs
         return masks.astype("bool"), class_ids.astype("int32")
-
-    def image_reference(
-            self,
-            image_id: str,
-    ) -> str:
-        """
-        Return a link to the image in its source website or details about
-        the image that help looking it up or debugging it.
-
-        :param image_id: file ID for the image
-        :return: string with reference information about the source or other details
-        """
-
-        return self.reference
