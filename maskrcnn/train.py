@@ -1,7 +1,7 @@
 import argparse
 import os
 import random
-from typing import Dict, List
+from typing import Dict
 
 from imgaug import augmenters as iaa
 from mrcnn import model as modellib
