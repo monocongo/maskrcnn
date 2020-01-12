@@ -25,17 +25,21 @@ class MaskrcnnConfig(Config):
         """
         Constructor function used to initialize objects of this class.
 
-        :param config_name:
-        :param class_names:
-        :param train_indices:
-        :param valid_indices:
+        :param config_name: arbitrary name to use for the configuration
+        :param class_names: dictionary of class IDs to class labels
+        :param train_indices: indices of the image file paths list to use for training
+        :param valid_indices: indices of the image file paths list to use for validation
+        :param gpu_count: the number of GPUs to use for training
+        :param images_per_gpu: the numner of images to use per GPU
         """
+
+        # number of classes (+1 for the background)
+        # NOTE: this needs to be set before calling the parent constructor, as
+        # described here: https://github.com/matterport/Mask_RCNN/issues/410#issuecomment-382364349
+        self.NUM_CLASSES = len(class_names) + 1
 
         # call the parent constructor
         super().__init__()
-
-        # number of classes (+1 for the background)
-        self.NUM_CLASSES = len(class_names) + 1
 
         # give the configuration a recognizable name
         self.NAME = config_name
@@ -50,26 +54,6 @@ class MaskrcnnConfig(Config):
         images_count = gpu_count * images_per_gpu
         self.STEPS_PER_EPOCH = len(train_indices) // images_count
         self.VALIDATION_STEPS = len(valid_indices) // images_count
-
-
-# ------------------------------------------------------------------------------
-class MaskrcnnConfigHardcoded(Config):
-
-    # number of classes (+1 for the background)
-    NUM_CLASSES = 2
-
-    # give the configuration a recognizable name
-    NAME = "maskrcnn"
-
-    # set the number of GPUs to use training along with the number of
-    # images per GPU (which may have to be tuned depending on how
-    # much memory your GPU has)
-    GPU_COUNT = 1
-    IMAGES_PER_GPU = 2
-
-    # set the number of steps per training epoch and validation cycle
-    STEPS_PER_EPOCH = 1037
-    VALIDATION_STEPS = 259
 
 
 # ------------------------------------------------------------------------------
@@ -191,8 +175,7 @@ def train_model(
     )
 
     # initialize the training configuration
-    config = MaskrcnnConfigHardcoded()
-    # config = MaskrcnnConfig("maskrcnn", class_names, train_indices, valid_indices)
+    config = MaskrcnnConfig("maskrcnn", class_names, train_indices, valid_indices)
 
     # initialize the model and load the pre-trained
     # weights we'll use to perform fine-tuning
