@@ -3,6 +3,7 @@ import os
 from typing import Dict, List
 
 import cv2
+from cvdata.utils import image_dimensions
 import imutils
 from mrcnn.utils import Dataset
 import numpy as np
@@ -174,21 +175,17 @@ class MaskrcnnViajsonDataset(MaskrcnnDataset):
         info = self.image_info[image_id]
         annotation = self.via_annotations[info["id"]]
 
-        # allocate memory for our [height, width, num_instances] array
+        # get the image's dimensions
+        width, height, _ = image_dimensions(info["path"])
+
+        # allocate memory for our [height, width, num_instances] 3-D array
         # where each "instance" (region) effectively has its own "channel"
         num_instances = len(annotation["regions"])
-        masks = np.zeros(
-            shape=(info["height"], info["width"], num_instances),
-            dtype="uint8",
-        )
+        masks = np.zeros(shape=(height, width, num_instances), dtype="uint8")
 
-        # allocate memory for our [num_instances] array to contain
+        # allocate memory for our [num_instances] 1-D array to contain
         # the class IDs corresponding to each mask instance
-        mask_class_ids = np.full(
-            shape=(num_instances,),
-            dtype="int32",
-            fill_value=-1,
-        )
+        mask_class_ids = np.full(shape=(num_instances,), dtype="int32", fill_value=-1)
 
         # loop over each of the annotated regions
         for (i, region) in enumerate(annotation["regions"]):
