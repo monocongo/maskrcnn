@@ -7,51 +7,53 @@ from imgaug import augmenters as iaa
 from mrcnn import model as modellib
 from mrcnn.config import Config
 
-from maskrcnn.dataset import MaskrcnnDataset
+from maskrcnn.dataset import MaskrcnnMasksDataset, MaskrcnnViajsonDataset
 
 
-# # ------------------------------------------------------------------------------
-# class MaskrcnnConfig(Config):
-#
-#     def __init__(
-#             self,
-#             config_name: str,
-#             class_names: Dict,
-#             train_indices: List[int],
-#             valid_indices: List[int],
-#     ):
-#         """
-#         Constructor function used to initialize objects of this class.
-#
-#         :param config_name:
-#         :param class_names:
-#         :param train_indices:
-#         :param valid_indices:
-#         """
-#
-#         # call the parent constructor
-#         super().__init__()
-#
-#         # number of classes (+1 for the background)
-#         self.NUM_CLASSES = len(class_names) + 1
-#
-#         # give the configuration a recognizable name
-#         self.NAME = config_name
-#
-#         # set the number of GPUs to use training along with the number of
-#         # images per GPU (which may have to be tuned depending on how
-#         # much memory your GPU has)
-#         GPU_COUNT = 1
-#         IMAGES_PER_GPU = 2
-#
-#         # set the number of steps per training epoch and validation cycle
-#         images_count = IMAGES_PER_GPU * GPU_COUNT
-#         STEPS_PER_EPOCH = len(train_indices) // images_count
-#         VALIDATION_STEPS = len(valid_indices) // images_count
-#
-#
 # ------------------------------------------------------------------------------
 class MaskrcnnConfig(Config):
+
+    def __init__(
+            self,
+            config_name: str,
+            class_names: Dict,
+            train_indices: List[int],
+            valid_indices: List[int],
+            gpu_count: int = 1,
+            images_per_gpu: int = 1,
+    ):
+        """
+        Constructor function used to initialize objects of this class.
+
+        :param config_name:
+        :param class_names:
+        :param train_indices:
+        :param valid_indices:
+        """
+
+        # call the parent constructor
+        super().__init__()
+
+        # number of classes (+1 for the background)
+        self.NUM_CLASSES = len(class_names) + 1
+
+        # give the configuration a recognizable name
+        self.NAME = config_name
+
+        # set the number of GPUs to use training along with the number of
+        # images per GPU (which may have to be tuned depending on how
+        # much memory your GPU has)
+        self.GPU_COUNT = gpu_count
+        self.IMAGES_PER_GPU = images_per_gpu
+
+        # set the number of steps per training epoch and validation cycle
+        images_count = gpu_count * images_per_gpu
+        self.STEPS_PER_EPOCH = len(train_indices) // images_count
+        self.VALIDATION_STEPS = len(valid_indices) // images_count
+
+
+# ------------------------------------------------------------------------------
+class MaskrcnnConfigHardcoded(Config):
 
     # number of classes (+1 for the background)
     NUM_CLASSES = 2
@@ -111,23 +113,20 @@ def _class_ids_to_labels(
 # ------------------------------------------------------------------------------
 def train_model(
         images_dir: str,
-        masks_dir: str,
-        masks_suffix: str,
         pretrained_model: str,
         output_dir: str,
         classes: str,
         epochs: int = 40,
         train_split: float = 0.8,
+        masks_dir: str = None,
+        masks_suffix: str = None,
+        viajson: str = None,
 ):
     """
     Trains (fine tuning) the Mask R-CNN model using a training dataset and
     pre-trained model weights.
 
     :param images_dir: directory containing image files
-    :param masks_dir: directory containing mask files
-    :param masks_suffix: mask file suffix, assumes mask file names equal the file
-        ID the corresponding image file (file name minus .jpg extension) plus
-        this suffix
     :param pretrained_model: model weights for pre-trained model
     :param output_dir: directory where log files and model weights will be written
     :param classes: path to text file containing the class labels used in the
@@ -135,6 +134,11 @@ def train_model(
     :param epochs: number of training iterations
     :param train_split: percentage of images to use for training (remainder
         for validation)
+    :param masks_dir: directory containing mask files
+    :param masks_suffix: mask file suffix, assumes mask file names equal the file
+        ID the corresponding image file (file name minus .jpg extension) plus
+        this suffix
+    :param viajson: JSON annotations file created by the VGG Image Annotator tool
     """
 
     # get list of image paths (all JPG images in the images directory)
@@ -165,12 +169,18 @@ def train_model(
     }
 
     # load the training dataset
-    train_dataset = MaskrcnnDataset(image_paths, class_names, class_masks, masks_dir, masks_suffix)
+    if viajson:
+        train_dataset = MaskrcnnViajsonDataset(image_paths, class_names, viajson)
+    else:
+        train_dataset = MaskrcnnMasksDataset(image_paths, class_names, class_masks, masks_dir, masks_suffix)
     train_dataset.add_images("maskrcnn", train_indices)
     train_dataset.prepare()
 
     # load the validation dataset
-    valid_dataset = MaskrcnnDataset(image_paths, class_names, class_masks, masks_dir, masks_suffix)
+    if viajson:
+        valid_dataset = MaskrcnnViajsonDataset(image_paths, class_names, viajson)
+    else:
+        valid_dataset = MaskrcnnMasksDataset(image_paths, class_names, class_masks, masks_dir, masks_suffix)
     valid_dataset.add_images("maskrcnn", valid_indices)
     valid_dataset.prepare()
 
@@ -181,7 +191,7 @@ def train_model(
     )
 
     # initialize the training configuration
-    config = MaskrcnnConfig()
+    config = MaskrcnnConfigHardcoded()
     # config = MaskrcnnConfig("maskrcnn", class_names, train_indices, valid_indices)
 
     # initialize the model and load the pre-trained
@@ -228,7 +238,7 @@ def main():
     )
     args_parser.add_argument(
         "--masks",
-        required=True,
+        required=False,
         type=str,
         help="directory path containing image masks corresponding "
              "to the image files in the images directory",
@@ -264,7 +274,7 @@ def main():
     )
     args_parser.add_argument(
         "--masks_suffix",
-        required=True,
+        required=False,
         type=str,
         help="each mask file name under the masks directory is assumed to be "
              "composed of the the image file ID plus this suffix, for example "
@@ -277,19 +287,26 @@ def main():
         type=str,
         help="path of the class labels file listing one class per line",
     )
-
+    args_parser.add_argument(
+        "--viajson",
+        required=False,
+        type=str,
+        help="path of the annotations JSON file created by the VGG Image "
+             "Annotator (VIA) tool, representing the masks for the images",
+    )
     args = vars(args_parser.parse_args())
 
     # train the model
     train_model(
         args["images"],
-        args["masks"],
-        args["masks_suffix"],
         args["pretrained"],
         args["output"],
         args["classes"],
         args["epochs"],
         args["train_split"],
+        args["masks"],
+        args["masks_suffix"],
+        args["viajson"],
     )
 
 

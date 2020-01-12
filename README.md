@@ -1,5 +1,7 @@
 # maskrcnn
-Instance segmentation using Mask R-CNN
+This project provides the ability to train and utilize the 
+[Mask R-CNN](https://arxiv.org/abs/1703.06870) algorithm for instance segmentation, 
+using an implementation provided by [Matterport](https://github.com/matterport/Mask_RCNN).
 
 ### Python Environment
 1. Create a new Python virtual environment:
@@ -41,7 +43,51 @@ be used as the basis of our custom trained model:
     ```
 
 ### Training Dataset
-Acquire a dataset of images and corresponding object segmentation masks. In this 
-example we will utilize a single class of object taken from Google's 
-[OpenImages](https://storage.googleapis.com/openimages/web/index.html) dataset. 
+Acquire a dataset of images and corresponding object segmentation masks. This project 
+currently supports two dataset scenarios: 1) a dataset with a directory of image 
+files and a corresponding directory of mask image files matching to each image 
+file, and 2) a dataset with a directory of image files and an annotations JSON file 
+created by the [VGG Image Annotator](http://www.robots.ox.ac.uk/~vgg/software/via/via.html) 
+tool.  
 
+A good dataset to use that includes image mask files is the 
+[ISIC 2018 Skin Lesion Analysis Dataset](https://challenge2018.isic-archive.com/), 
+and is appropriate for use with the first scenario mentioned above.
+
+Support is planned for datasets pulled from Google's  
+[OpenImages](https://storage.googleapis.com/openimages/web/index.html) dataset, 
+which includes images with segmentation regions annotated in CSV format.
+
+### Training
+A training script is provided for training the model using the two supported dataset 
+scenarios described above.
+###### Usage with masks:
+```bash
+$ python maskrcnn/train.py --images /data/lesions/images --masks /data/lesions/masks \
+    --masks_suffix _segmentation.png --pretrained ${MRCNN}/mask_rcnn_coco.h5 \
+    --output ${MRCNN}/output --classes /data/lesions/class_labels.txt \
+    --epochs 50 --train_split 0.8
+```
+The above assumes a dataset with image files in JPG format with `*.jpg` extensions 
+in the directory `/data/lesions/images` and corresponding mask files in PNG format 
+with `*.png` extensions in the directory `/data/lesions/masks`. The mask files should 
+share the file ID (file name minus the ".jpg" extension) of the corresponding image 
+file, with the mask file name composed of the file ID plus the `masks_suffix` argument. 
+For example if the image file is "abc.jpg" and the `masks_suffix` argument is 
+"_segmentation.png" then the mask file is expected to be named "abc_segmentation.png". 
+We also expect to have a class labels file with one label per line in order to tell 
+the model which classes are being mapped to class IDs, with the first class label 
+line corresponding to class ID 1, the second to class ID 2, etc.
+
+###### Usage with a VIA annotations JSON file:
+```bash
+$ python maskrcnn/train.py --images /data/lesions/images \
+    --viajson /data/lesions/via_annotations.json \
+    --pretrained ${MRCNN}/mask_rcnn_coco.h5 \
+    --output ${MRCNN}/output --classes /data/lesions/class_labels.txt \
+    --epochs 50 --train_split 0.8
+```
+
+### Credit
+The basis of this project is the original code found in 
+[Deep Learning for Computer Vision by Dr. Adrian Rosebrock](https://www.pyimagesearch.com/deep-learning-computer-vision-python-book/). 
