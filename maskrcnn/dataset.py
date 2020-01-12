@@ -134,7 +134,7 @@ class MaskrcnnViajsonDataset(MaskrcnnDataset):
         """
 
         # call the parent constructor
-        super().__init__(self, image_paths, class_names, width, reference)
+        super().__init__(image_paths, class_names, width=width, reference=reference)
 
         self.via_annotations = self.load_annotation_data(viajson)
 
@@ -262,7 +262,7 @@ class MaskrcnnMasksDataset(MaskrcnnDataset):
         """
 
         # call the parent constructor
-        super().__init__(self, image_paths, class_names, width, reference)
+        super().__init__(image_paths, class_names, width, reference)
 
         # directory and suffix of mask file paths
         # mask files should share the ID of their corresponding image,
