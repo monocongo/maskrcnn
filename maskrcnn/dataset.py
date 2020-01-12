@@ -220,12 +220,12 @@ class MaskrcnnViajsonDataset(MaskrcnnDataset):
             # reshape the points to (<# of coordinates>, 1, 2)
             pts = pts.reshape((-1, 1, 2))
 
-            # draw the polygon mask, using the class ID as the mask value
-            grayscale_rgb = [class_id]*3
-            cv2.polylines(region_mask, [pts], True, grayscale_rgb)
+            # # draw the polygon mask, using the class ID as the mask value
+            # grayscale_rgb = [class_id]*3
+            # cv2.polylines(region_mask, [pts], True, grayscale_rgb)
 
-            # fill the polygon (don't just have a border)
-            # TODO
+            # draw the polygon mask, using the class ID as the mask value
+            cv2.fillPoly(region_mask, pts, np.uint8(class_id))
 
             # store the mask in the masks array
             masks[:, :, i] = region_mask
