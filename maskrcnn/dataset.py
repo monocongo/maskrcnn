@@ -152,13 +152,12 @@ class MaskrcnnViajsonDataset(MaskrcnnDataset):
         """
 
         # load the contents of the annotation JSON file (created
-        # using the VIA tool) and initialize the annotations
-        # dictionary
+        # using the VIA tool) and initialize the annotations dictionary
         annotations = json.loads(open(viajson_file_path).read())
         image_annotations = {}
 
         # loop over the file ID and annotations themselves (values)
-        for (fileID, data) in sorted(annotations.items()):
+        for data in sorted(annotations.values()):
             # store the data in the dictionary using the filename as the key
             image_annotations[data["filename"]] = data
 
@@ -220,12 +219,8 @@ class MaskrcnnViajsonDataset(MaskrcnnDataset):
             # reshape the points to (<# of coordinates>, 1, 2)
             pts = pts.reshape((-1, 1, 2))
 
-            # # draw the polygon mask, using the class ID as the mask value
-            # grayscale_rgb = [class_id]*3
-            # cv2.polylines(region_mask, [pts], True, grayscale_rgb)
-
             # draw the polygon mask, using the class ID as the mask value
-            cv2.fillPoly(region_mask, pts, np.uint8(class_id))
+            cv2.fillPoly(region_mask, [pts], color=[class_id]*3)
 
             # store the mask in the masks array
             masks[:, :, i] = region_mask
