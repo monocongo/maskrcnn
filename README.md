@@ -70,7 +70,9 @@ currently supports two dataset scenarios: 1) a dataset with a directory of image
 files and a corresponding directory of mask image files matching to each image 
 file, and 2) a dataset with a directory of image files and an annotations JSON file 
 created by the [VGG Image Annotator](http://www.robots.ox.ac.uk/~vgg/software/via/via.html) 
-tool.  
+tool. In order to validate a dataset with masks defined via the VIA tool we can 
+use the Jupyter notebook `notebook/inspect_dataset_via.ipynb`.
+
 
 A good dataset to use that includes image mask files is the 
 [ISIC 2018 Skin Lesion Analysis Dataset](https://challenge2018.isic-archive.com/), 
