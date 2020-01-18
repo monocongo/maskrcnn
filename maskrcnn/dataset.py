@@ -7,6 +7,7 @@ from cvdata.utils import image_dimensions
 import imutils
 from mrcnn.utils import Dataset
 import numpy as np
+import skimage
 
 
 class MaskrcnnDataset(Dataset):
@@ -14,7 +15,7 @@ class MaskrcnnDataset(Dataset):
     def __init__(
             self,
             image_paths: List[str],
-            class_names: Dict,
+            class_ids_to_labels: Dict,
             width: int = 1024,
             reference: str = None,
     ):
@@ -22,7 +23,7 @@ class MaskrcnnDataset(Dataset):
         Constructor function used to initialize objects of this class.
 
         :param image_paths: list of image paths
-        :param class_names: dictionary of class IDs to labels
+        :param class_ids_to_labels: dictionary of class IDs to labels
         :param width: width to which images and masks will eventually be resized
         :param reference: description, URL, etc. providing some reference for
             the source or other details of the image
@@ -39,7 +40,10 @@ class MaskrcnnDataset(Dataset):
         self.image_paths = image_paths
 
         # dictionary mapping class IDs to class labels (names)
-        self.class_names = class_names
+        self.class_ids_to_labels = class_ids_to_labels
+
+        # set the class names
+        self.class_names = class_ids_to_labels.values()
 
         # the width dimension to which all images will be resized
         self.width = width
@@ -61,7 +65,7 @@ class MaskrcnnDataset(Dataset):
         """
 
         # loop over each of the class IDs/names and add to the source dataset
-        for (class_id, label) in self.class_names.items():
+        for (class_id, label) in self.class_ids_to_labels.items():
             self.add_class(data_source, class_id, label)
 
         # loop over the image path indexes
@@ -117,7 +121,7 @@ class MaskrcnnViajsonDataset(MaskrcnnDataset):
     def __init__(
             self,
             image_paths: List[str],
-            class_names: Dict,
+            class_ids_to_labels: Dict,
             viajson: str,
             width: int = 1024,
             reference: str = None,
@@ -126,7 +130,7 @@ class MaskrcnnViajsonDataset(MaskrcnnDataset):
         Constructor function used to initialize objects of this class.
 
         :param image_paths:
-        :param class_names: dictionary of class IDs to labels
+        :param class_ids_to_labels: dictionary of class IDs to labels
         :param viajson: path to VIA annotations JSON file containing segmentation
             regions defining the masks
         :param width:
@@ -134,7 +138,12 @@ class MaskrcnnViajsonDataset(MaskrcnnDataset):
         """
 
         # call the parent constructor
-        super().__init__(image_paths, class_names, width=width, reference=reference)
+        super().__init__(
+            image_paths=image_paths,
+            class_ids_to_labels=class_ids_to_labels,
+            width=width,
+            reference=reference,
+        )
 
         self.via_annotations = self.load_annotation_data(viajson)
 
@@ -157,17 +166,74 @@ class MaskrcnnViajsonDataset(MaskrcnnDataset):
         image_annotations = {}
 
         # loop over the file ID and annotations themselves (values)
-        for data in sorted(annotations.values()):
-            # store the data in the dictionary using the filename as the key
-            image_annotations[data["filename"]] = data
+        for data in annotations.values():
+        # for data in sorted(annotations.values()):
+            # the VIA tool saves images into the annotations JSON even if
+            # they don't have any annotations, so we skip unannotated images
+            if data['regions']:
+                # store the data in the dictionary using the filename as the key
+                image_annotations[data["filename"]] = data
 
         # return the annotations dictionary
         return image_annotations
+
+    def add_images(
+            self,
+            data_source: str,
+            idxs: List[int],
+    ):
+        """
+        Add images into the dataset based on indices of the image file paths list.
+
+        :param data_source:
+        :param idxs: indices of the file paths list for the images be added
+        :return:
+        """
+
+        # loop over each of the class IDs/names and add to the source dataset
+        for (class_id, label) in self.class_ids_to_labels.items():
+            self.add_class(data_source, class_id, label)
+
+        # loop over the image path indexes
+        for i in idxs:
+            # extract the image filename to serve as the unique image ID
+            image_path = self.image_paths[i]
+            filename = image_path.split(os.path.sep)[-1]
+
+            # get the image dimensions
+            width, height, _ = image_dimensions(image_path)
+
+            # Get the x, y coordinates of points of the polygons that make up
+            # the outline of each object instance. These are stored in the
+            # shape_attributes (see json format above)
+            # The if condition is needed to support VIA versions 1.x and 2.x.
+            a = self.via_annotations[filename]
+            if type(a['regions']) is dict:
+                polygons = [r['shape_attributes'] for r in a['regions'].values()]
+            else:
+                polygons = [r['shape_attributes'] for r in a['regions']]
+
+            # add the image to the dataset
+            self.add_image(
+                data_source,
+                image_id=filename,
+                path=image_path,
+                width=width,
+                height=height,
+                polygons=polygons)
 
     def load_mask(
             self,
             image_id: str,
     ) -> (np.ndarray, List):
+        """
+        Generate instance masks for an image.
+
+        :param image_id: image identifier
+        :return: 1) a boolean array of shape [height, width, instance_count]
+            with one mask per instance, and 2) a 1-D array of class IDs
+            corresponding to the instance masks (of length instance_count)
+        """
 
         # grab the image info and then grab the annotation data for
         # the current image based on the unique image ID
@@ -199,7 +265,7 @@ class MaskrcnnViajsonDataset(MaskrcnnDataset):
             # find the class ID corresponding to the region's class attribute
             class_label = region_attributes["class"]
             class_id = -1
-            for key, label in self.class_names.items():
+            for key, label in self.class_ids_to_labels.items():
                 if label == class_label:
                     class_id = key
                     break
@@ -228,8 +294,18 @@ class MaskrcnnViajsonDataset(MaskrcnnDataset):
             # store the class ID for this channel (mask region)
             mask_class_ids[i] = class_id
 
-        # return the mask array and array of mask class IDs
-        return masks.astype("bool"), mask_class_ids
+        # resize the masks
+        resized_mask = imutils.resize(masks[:, :, 0], width=self.width)
+        new_height, new_width = resized_mask.shape[:2]
+        resized_masks = np.zeros(
+            [new_height, new_width, num_instances],
+            dtype=np.uint8,
+        )
+        for i in range(num_instances):
+            resized_masks[:, :, i] = imutils.resize(masks[:, :, i], width=self.width)
+
+        # return the masks array and the array of mask class IDs
+        return resized_masks.astype("bool"), mask_class_ids
 
 
 class MaskrcnnMasksDataset(MaskrcnnDataset):
@@ -237,7 +313,7 @@ class MaskrcnnMasksDataset(MaskrcnnDataset):
     def __init__(
             self,
             image_paths: List[str],
-            class_names: Dict,
+            class_ids_to_labels: Dict,
             class_masks: Dict,
             masks_dir: str,
             masks_suffix: str,
@@ -248,7 +324,7 @@ class MaskrcnnMasksDataset(MaskrcnnDataset):
         Constructor function used to initialize objects of this class.
 
         :param image_paths:
-        :param class_names: dictionary of class IDs to labels
+        :param class_ids_to_labels: dictionary of class IDs to labels
         :param class_masks: dictionary of class IDs to mask pixel values
         :param masks_dir:
         :param masks_suffix:
@@ -257,7 +333,12 @@ class MaskrcnnMasksDataset(MaskrcnnDataset):
         """
 
         # call the parent constructor
-        super().__init__(image_paths, class_names, width, reference)
+        super().__init__(
+            image_paths=image_paths,
+            class_ids_to_labels=class_ids_to_labels,
+            width=width,
+            reference=reference,
+        )
 
         # directory and suffix of mask file paths
         # mask files should share the ID of their corresponding image,
