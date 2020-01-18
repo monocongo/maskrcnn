@@ -21,7 +21,7 @@ We assume a Linux development environment running on Ubuntu 18.04.
     ```
     $ sudo apt install ./libcudnn7_7.6.5.32-1+cuda10.2_amd64.deb
     ```
-3. Install OpenCV:
+3. Install [OpenCV](https://opencv.org/):
     ```
     $ sudo apt-get install libopencv-dev python3-opencv
     ```   
