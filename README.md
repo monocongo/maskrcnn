@@ -3,6 +3,28 @@ This project provides the ability to train and utilize the
 [Mask R-CNN](https://arxiv.org/abs/1703.06870) algorithm for instance segmentation, 
 using an implementation provided by [Matterport](https://github.com/matterport/Mask_RCNN).
 
+### Prerequisites
+We assume a Linux development environment running on Ubuntu 18.04.
+
+1. Install [CUDA](https://developer.nvidia.com/cuda-toolkit):
+    ```bash
+    $ wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
+    $ sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
+    $ sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
+    $ sudo add-apt-repository "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /"
+    $ sudo apt-get update
+    $ sudo apt-get -y install cuda
+    ```
+2. Install [cuDNN](https://developer.nvidia.com/rdp/cudnn-download):
+    1. Login to the [NVIDIA Developer Network](https://developer.nvidia.com)
+    2. Download the [cuDNN Runtime Library for Ubuntu18.04](https://developer.nvidia.com/compute/machine-learning/cudnn/secure/7.6.5.32/Production/10.2_20191118/Ubuntu18_04-x64/libcudnn7_7.6.5.32-1%2Bcuda10.2_amd64.deb)
+    ```
+    $ sudo apt install ./libcudnn7_7.6.5.32-1+cuda10.2_amd64.deb
+    ```
+3. Install [OpenCV](https://opencv.org/):
+    ```
+    $ sudo apt-get install libopencv-dev python3-opencv
+    ```   
 ### Python Environment
 1. Create a new Python virtual environment:
     ```bash
@@ -48,7 +70,9 @@ currently supports two dataset scenarios: 1) a dataset with a directory of image
 files and a corresponding directory of mask image files matching to each image 
 file, and 2) a dataset with a directory of image files and an annotations JSON file 
 created by the [VGG Image Annotator](http://www.robots.ox.ac.uk/~vgg/software/via/via.html) 
-tool.  
+tool. In order to validate a dataset with masks defined via the VIA tool we can 
+use the Jupyter notebook `notebook/inspect_dataset_via.ipynb`.
+
 
 A good dataset to use that includes image mask files is the 
 [ISIC 2018 Skin Lesion Analysis Dataset](https://challenge2018.isic-archive.com/), 

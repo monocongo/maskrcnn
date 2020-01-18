@@ -51,13 +51,13 @@ class MaskrcnnConfig(Config):
         self.IMAGES_PER_GPU = images_per_gpu
 
         # set the number of steps per training epoch and validation cycle
-        images_count = gpu_count * images_per_gpu
-        self.STEPS_PER_EPOCH = len(train_indices) // images_count
-        self.VALIDATION_STEPS = len(valid_indices) // images_count
+        batch_size = gpu_count * images_per_gpu
+        self.STEPS_PER_EPOCH = len(train_indices) // batch_size
+        self.VALIDATION_STEPS = len(valid_indices) // batch_size
 
 
 # ------------------------------------------------------------------------------
-def _class_ids_to_labels(
+def class_ids_to_labels(
         labels_path: str,
 ) -> Dict:
     """
@@ -142,7 +142,7 @@ def train_model(
     valid_indices = path_indices[i:]
 
     # read the classes file to get the class IDs mapped to class labels/names
-    class_names = _class_ids_to_labels(classes)
+    class_ids = class_ids_to_labels(classes)
 
     # for each class ID add the mask value used in the mask image
     # TODO the values below are specific to mask files where there
@@ -154,17 +154,17 @@ def train_model(
 
     # load the training dataset
     if viajson:
-        train_dataset = MaskrcnnViajsonDataset(image_paths, class_names, viajson)
+        train_dataset = MaskrcnnViajsonDataset(image_paths, class_ids, viajson)
     else:
-        train_dataset = MaskrcnnMasksDataset(image_paths, class_names, class_masks, masks_dir, masks_suffix)
+        train_dataset = MaskrcnnMasksDataset(image_paths, class_ids, class_masks, masks_dir, masks_suffix)
     train_dataset.add_images("maskrcnn", train_indices)
     train_dataset.prepare()
 
     # load the validation dataset
     if viajson:
-        valid_dataset = MaskrcnnViajsonDataset(image_paths, class_names, viajson)
+        valid_dataset = MaskrcnnViajsonDataset(image_paths, class_ids, viajson)
     else:
-        valid_dataset = MaskrcnnMasksDataset(image_paths, class_names, class_masks, masks_dir, masks_suffix)
+        valid_dataset = MaskrcnnMasksDataset(image_paths, class_ids, class_masks, masks_dir, masks_suffix)
     valid_dataset.add_images("maskrcnn", valid_indices)
     valid_dataset.prepare()
 
@@ -175,7 +175,7 @@ def train_model(
     )
 
     # initialize the training configuration
-    config = MaskrcnnConfig("maskrcnn", class_names, train_indices, valid_indices)
+    config = MaskrcnnConfig("maskrcnn", class_ids, train_indices, valid_indices)
 
     # initialize the model and load the pre-trained
     # weights we'll use to perform fine-tuning
