@@ -7,7 +7,6 @@ from cvdata.utils import image_dimensions
 import imutils
 from mrcnn.utils import Dataset
 import numpy as np
-import skimage
 
 
 class MaskrcnnDataset(Dataset):
@@ -167,7 +166,6 @@ class MaskrcnnViajsonDataset(MaskrcnnDataset):
 
         # loop over the file ID and annotations themselves (values)
         for data in annotations.values():
-        # for data in sorted(annotations.values()):
             # the VIA tool saves images into the annotations JSON even if
             # they don't have any annotations, so we skip unannotated images
             if data['regions']:

@@ -38,10 +38,16 @@ We assume a Linux development environment running on Ubuntu 18.04.
     $ cd Mask_RCNN/
     $ python setup.py install
     ```
+   NOTE: it may be necessary to add the following into the `mrcnn/model.py` file 
+   before installing the package:
+   ```python
+   if K.backend()=='tensorflow':
+      keras.backend.set_image_data_format("channels_last")
+   ```
 3. Install additional libraries we'll use in our project (assumes that `conda-forge` 
 is the primary channel):
     ```bash
-    $ for pkg in opencv imutils imgaug tensorflow=1.13 keras=2.2.3
+    $ for pkg in opencv imutils imgaug tensorflow-gpu=1.13 keras=2.2.5
     > do
     > conda install $pkg --yes
     > done
@@ -87,6 +93,7 @@ A training script is provided for training the model using the two supported dat
 scenarios described above.
 ###### Usage with masks:
 ```bash
+$ export KERAS_BACKEND=tensorflow
 $ python maskrcnn/train.py --images /data/lesions/images --masks /data/lesions/masks \
     --masks_suffix _segmentation.png --pretrained ${MRCNN}/mask_rcnn_coco.h5 \
     --output ${MRCNN}/output --classes /data/lesions/class_labels.txt \
@@ -105,6 +112,7 @@ line corresponding to class ID 1, the second to class ID 2, etc.
 
 ###### Usage with a VIA annotations JSON file:
 ```bash
+$ export KERAS_BACKEND=tensorflow
 $ python maskrcnn/train.py --images /data/lesions/images \
     --viajson /data/lesions/via_annotations.json \
     --pretrained ${MRCNN}/mask_rcnn_coco.h5 \
